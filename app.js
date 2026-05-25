@@ -1,282 +1,79 @@
-const express = require("express");
-const app = express();
+// =======================================
+// INTERNSHIP MANAGEMENT SYSTEM BACKEND
+// FULL PROJECT IN SINGLE FILE
+// =======================================
 
-const db = require("./db");
+// ---------- IMPORTS ----------
+
+require("dotenv").config();
+
+const express = require("express");
+const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+const app = express();
+
 app.use(express.json());
 
+// =======================================
+// DATABASE CONNECTION
+// =======================================
+
+const db = mysql.createConnection({
+
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
+
+});
+
+db.connect((err) => {
+
+    if (err) {
+
+        console.log("Database connection failed");
+
+    } else {
+
+        console.log("Database connected successfully");
+
+    }
+
+});
+
+// =======================================
+// DEFAULT ROUTE
+// =======================================
+
 app.get("/", (req, res) => {
-    res.send("Internship Portal Backend Running");
-});
-app.get("/internships",(req,res)=>{
-    const sql="select * from internships";
-    db.query(sql,(err,result)=>{
-        if(err){
-            return res.send("error message");
-        }
-        res.json(result);
-    });
-});
-app.post("/internships", (req, res) => {
 
-    const { title, company, location, stipend } = req.body;
+    res.status(200).json({
 
-    if (!title || !company || !location || !stipend) {
-        return res.send("Please provide all fields");
-    }
+        message: "Internship Portal Backend Running"
 
-    const sql = `
-        INSERT INTO internships (title, company, location, stipend)
-        VALUES (?, ?, ?, ?)
-    `;
-
-    db.query(
-        sql,
-        [title, company, location, stipend],
-        (err, result) => {
-
-            if (err) {
-                return res.send("Database insert error");
-            }
-
-            res.send("Internship added successfully");
-        }
-    );
-});
-app.delete("/internships/:id", (req, res) => {
-
-    const id = req.params.id;
-
-    const sql = "DELETE FROM internships WHERE id = ?";
-
-    db.query(sql, [id], (err, result) => {
-
-        if (err) {
-            return res.send("Database delete error");
-        }
-
-        if (result.affectedRows === 0) {
-            return res.send("Internship not found");
-        }
-
-        res.send("Internship deleted successfully");
-    });
-});
-app.put("/internships/:id", (req, res) => {
-
-    const id = req.params.id;
-
-    const { title, company, location, stipend } = req.body;
-
-    if (!title || !company || !location || !stipend) {
-        return res.send("Please provide all fields");
-    }
-
-    const sql = `
-        UPDATE internships
-        SET title = ?, company = ?, location = ?, stipend = ?
-        WHERE id = ?
-    `;
-
-    db.query(
-        sql,
-        [title, company, location, stipend, id],
-        (err, result) => {
-
-            if (err) {
-                return res.send("Database update error");
-            }
-
-            if (result.affectedRows === 0) {
-                return res.send("Internship not found");
-            }
-
-            res.send("Internship updated successfully");
-        }
-    );
-});
-app.post("/bulk-internships", (req, res) => {
-
-    const internships = req.body;
-
-    if (!Array.isArray(internships)) {
-        return res.send("Please send array data");
-    }
-
-    internships.forEach((internship) => {
-
-        const { title, company, location, stipend } = internship;
-
-        if (!title || !company || !location || !stipend) {
-            return res.send("provide all the essential fields of data");
-        }
-
-        const sql = `
-            INSERT INTO internships
-            (title, company, location, stipend)
-            VALUES (?, ?, ?, ?)
-        `;
-
-        db.query(
-            sql,
-            [title, company, location, stipend],
-            (err) => {
-                if (err) {
-                    console.log(err);
-                }
-            }
-        );
     });
 
-    res.send("Bulk internships added");
-});
-// regsiter api
-app.post("/register", async (req, res) => {
-
-    const { name, email, password, role } = req.body;
-
-    // validation
-    if (!name || !email || !password || !role) {
-        return res.send("Please provide all fields");
-    }
-
-    try {
-
-        // hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const sql = `
-            INSERT INTO users (name, email, password, role)
-            VALUES (?, ?, ?, ?)
-        `;
-
-        db.query(
-            sql,
-            [name, email, hashedPassword, role],
-            (err, result) => {
-
-                if (err) {
-                    console.log(err);
-                    return res.send("Registration error");
-                }
-
-                res.send("User registered successfully");
-            }
-        );
-
-    } catch (error) {
-
-        console.log(error);
-        res.send("Server error");
-
-    }
-
 });
 
+// =======================================
+// JWT VERIFY TOKEN MIDDLEWARE
+// =======================================
 
-
-//login api
-// LOGIN API
-
-app.post("/login", async (req, res) => {
-
-    try {
-
-        const email = req.body.email;
-        const password = req.body.password;
-
-        // validation
-        if (!email || !password) {
-            return res.send("Email and password required");
-        }
-
-        // find user
-        const sql = "SELECT * FROM users WHERE email = ?";
-
-        db.query(sql, [email], async (err, result) => {
-
-            if (err) {
-                console.log(err);
-                return res.send("eroor message");
-            }
-
-            // check user exists
-            if (result.length === 0) {
-                return res.send("No user found");
-            }
-
-            const user = result[0];
-
-            // compare password
-            const checkPassword = await bcrypt.compare(
-                password,
-                user.password
-            );
-
-            if (checkPassword) {
-
-                // generate JWT token
-                const token = jwt.sign(
-
-                    {
-                        id: user.id,
-                        email: user.email,
-                        role: user.role
-                    },
-
-                    "hackerscannothack11",
-
-                    {
-                        expiresIn: "1h"
-                    }
-
-                );
-
-                // send response
-                res.send({
-
-                    message: "Login successful",
-
-                    token: token,
-
-                    user: {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role
-                    }
-
-                });
-
-            } else {
-
-                res.send("Wrong password");
-
-            }
-
-        });
-
-    } catch (error) {
-
-        console.log(error);
-        res.send("Server error");
-
-    }
-
-});
-
-
-// VERIFY TOKEN MIDDLEWARE
-
-const verifytheToken = (req, res, next) => {
+const verifyToken = (req, res, next) => {
 
     const header = req.headers.authorization;
 
-    // check token exists
+    // token exists or not
     if (!header) {
-        return res.send("Access denied");
+
+        return res.status(401).json({
+
+            message: "Access denied"
+
+        });
+
     }
 
     // extract token
@@ -287,93 +84,635 @@ const verifytheToken = (req, res, next) => {
         // verify token
         const verified = jwt.verify(
             token,
-            "hackerscannothack11"
+            process.env.JWT_SECRET
         );
 
-        // store decoded user
+        // store user data
         req.user = verified;
 
         next();
 
     } catch (error) {
 
-        res.send("Invalid token");
+        return res.status(401).json({
+
+            message: "Invalid token"
+
+        });
 
     }
 
 };
 
-
+// =======================================
 // ADMIN ONLY MIDDLEWARE
+// =======================================
 
 const adminOnly = (req, res, next) => {
 
     if (req.user.role !== "admin") {
-        return res.send("Only admin can access");
+
+        return res.status(403).json({
+
+            message: "Only admin can access"
+
+        });
+
     }
 
     next();
 
 };
-app.get("/users",(req,res)=>{
-    const sql = "select * from users";
-    db.query(sql,(err,result)=>{
-        if(err){
-            return res.send("Dataabse error try again ");
+
+// =======================================
+// REGISTER API
+// =======================================
+
+app.post("/register", async (req, res) => {
+
+    try {
+
+        const { name, email, password, role } = req.body;
+
+        // validation
+        if (!name || !email || !password || !role) {
+
+            return res.status(400).json({
+
+                message: "Please provide all fields"
+
+            });
+
         }
-        else{
-            res.json(result);
+
+        // check email already exists
+        const checkSql =
+            "SELECT * FROM users WHERE email = ?";
+
+        db.query(
+            checkSql,
+            [email],
+            async (err, result) => {
+
+                if (err) {
+
+                    return res.status(500).json({
+
+                        message: "Database error"
+
+                    });
+
+                }
+
+                if (result.length > 0) {
+
+                    return res.status(400).json({
+
+                        message: "Email already exists"
+
+                    });
+
+                }
+
+                // hash password
+                const hashedPassword =
+                    await bcrypt.hash(password, 10);
+
+                // insert user
+                const sql = `
+                    INSERT INTO users
+                    (name, email, password, role)
+                    VALUES (?, ?, ?, ?)
+                `;
+
+                db.query(
+                    sql,
+                    [
+                        name,
+                        email,
+                        hashedPassword,
+                        role
+                    ],
+                    (err, result) => {
+
+                        if (err) {
+
+                            return res.status(500).json({
+
+                                message: "Registration failed"
+
+                            });
+
+                        }
+
+                        res.status(201).json({
+
+                            message:
+                                "User registered successfully"
+
+                        });
+
+                    }
+                );
+
+            }
+        );
+
+    } catch (error) {
+
+        res.status(500).json({
+
+            message: "Server error"
+
+        });
+
+    }
+
+});
+
+// =======================================
+// LOGIN API
+// =======================================
+
+app.post("/login", async (req, res) => {
+
+    try {
+
+        const { email, password } = req.body;
+
+        // validation
+        if (!email || !password) {
+
+            return res.status(400).json({
+
+                message:
+                    "Email and password required"
+
+            });
+
         }
+
+        // find user
+        const sql =
+            "SELECT * FROM users WHERE email = ?";
+
+        db.query(
+            sql,
+            [email],
+            async (err, result) => {
+
+                if (err) {
+
+                    return res.status(500).json({
+
+                        message: "Database error"
+
+                    });
+
+                }
+
+                // user exists or not
+                if (result.length === 0) {
+
+                    return res.status(404).json({
+
+                        message: "No user found"
+
+                    });
+
+                }
+
+                const user = result[0];
+
+                // compare password
+                const checkPassword =
+                    await bcrypt.compare(
+                        password,
+                        user.password
+                    );
+
+                if (!checkPassword) {
+
+                    return res.status(401).json({
+
+                        message: "Wrong password"
+
+                    });
+
+                }
+
+                // generate token
+                const token = jwt.sign(
+
+                    {
+                        id: user.id,
+                        email: user.email,
+                        role: user.role
+                    },
+
+                    process.env.JWT_SECRET,
+
+                    {
+                        expiresIn: "1h"
+                    }
+
+                );
+
+                // response
+                res.status(200).json({
+
+                    message: "Login successful",
+
+                    token,
+
+                    user: {
+
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role
+
+                    }
+
+                });
+
+            }
+        );
+
+    } catch (error) {
+
+        res.status(500).json({
+
+            message: "Server error"
+
+        });
+
+    }
+
+});
+
+// =======================================
+// GET ALL INTERNSHIPS
+// =======================================
+
+app.get("/internships", (req, res) => {
+
+    const sql = "SELECT * FROM internships";
+
+    db.query(sql, (err, result) => {
+
+        if (err) {
+
+            return res.status(500).json({
+
+                message: "Database error"
+
+            });
+
+        }
+
+        res.status(200).json(result);
+
     });
 
 });
-app.get("/profile", verifytheToken, (req, res) => {
 
-    res.send({
+// =======================================
+// GET SINGLE INTERNSHIP
+// =======================================
 
-        message: "Protected profile accessed",
+app.get("/internships/:id", (req, res) => {
 
-        user: req.user
+    const id = req.params.id;
+
+    const sql =
+        "SELECT * FROM internships WHERE id = ?";
+
+    db.query(sql, [id], (err, result) => {
+
+        if (err) {
+
+            return res.status(500).json({
+
+                message: "Database error"
+
+            });
+
+        }
+
+        if (result.length === 0) {
+
+            return res.status(404).json({
+
+                message: "Internship not found"
+
+            });
+
+        }
+
+        res.status(200).json(result[0]);
 
     });
 
 });
+
+// =======================================
+// ADD INTERNSHIP
+// =======================================
+
+app.post(
+    "/internships",
+    verifyToken,
+    adminOnly,
+    (req, res) => {
+
+        const {
+            title,
+            company,
+            location,
+            stipend
+        } = req.body;
+
+        // validation
+        if (
+            !title ||
+            !company ||
+            !location ||
+            !stipend
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Please provide all fields"
+
+            });
+
+        }
+
+        const sql = `
+            INSERT INTO internships
+            (title, company, location, stipend)
+            VALUES (?, ?, ?, ?)
+        `;
+
+        db.query(
+            sql,
+            [
+                title,
+                company,
+                location,
+                stipend
+            ],
+            (err, result) => {
+
+                if (err) {
+
+                    return res.status(500).json({
+
+                        message:
+                            "Database insert error"
+
+                    });
+
+                }
+
+                res.status(201).json({
+
+                    message:
+                        "Internship added successfully"
+
+                });
+
+            }
+        );
+
+    }
+);
+
+// =======================================
+// UPDATE INTERNSHIP
+// =======================================
+
+app.put(
+    "/internships/:id",
+    verifyToken,
+    adminOnly,
+    (req, res) => {
+
+        const id = req.params.id;
+
+        const {
+            title,
+            company,
+            location,
+            stipend
+        } = req.body;
+
+        const sql = `
+            UPDATE internships
+            SET title = ?,
+                company = ?,
+                location = ?,
+                stipend = ?
+            WHERE id = ?
+        `;
+
+        db.query(
+            sql,
+            [
+                title,
+                company,
+                location,
+                stipend,
+                id
+            ],
+            (err, result) => {
+
+                if (err) {
+
+                    return res.status(500).json({
+
+                        message:
+                            "Database update error"
+
+                    });
+
+                }
+
+                res.status(200).json({
+
+                    message:
+                        "Internship updated successfully"
+
+                });
+
+            }
+        );
+
+    }
+);
+
+// =======================================
+// DELETE INTERNSHIP
+// =======================================
+
+app.delete(
+    "/internships/:id",
+    verifyToken,
+    adminOnly,
+    (req, res) => {
+
+        const id = req.params.id;
+
+        const sql =
+            "DELETE FROM internships WHERE id = ?";
+
+        db.query(sql, [id], (err, result) => {
+
+            if (err) {
+
+                return res.status(500).json({
+
+                    message:
+                        "Database delete error"
+
+                });
+
+            }
+
+            res.status(200).json({
+
+                message:
+                    "Internship deleted successfully"
+
+            });
+
+        });
+
+    }
+);
+
+// =======================================
+// SEARCH INTERNSHIPS
+// =======================================
+
+app.get("/search", (req, res) => {
+
+    const location = req.query.location;
+
+    const sql = `
+        SELECT * FROM internships
+        WHERE location LIKE ?
+    `;
+
+    db.query(
+        sql,
+        [`%${location}%`],
+        (err, result) => {
+
+            if (err) {
+
+                return res.status(500).json({
+
+                    message: "Database error"
+
+                });
+
+            }
+
+            res.status(200).json(result);
+
+        }
+    );
+
+});
+
+// =======================================
+// APPLY FOR INTERNSHIP
+// =======================================
+
 app.post(
     "/apply/:internshipId",
-    verifytheToken,
+    verifyToken,
     (req, res) => {
 
         const student_id = req.user.id;
 
-        const internship_id = req.params.internshipId;
+        const internship_id =
+            req.params.internshipId;
 
         const status = "applied";
 
-        // check already applied
-        const checkSql = `SELECT * FROM applications WHERE student_id = ? AND internship_id = ?`;
-        db.query(checkSql,[student_id, internship_id],(err, result) => {
+        // already applied check
+        const checkSql = `
+            SELECT * FROM applications
+            WHERE student_id = ?
+            AND internship_id = ?
+        `;
 
-                if(err){
-                    console.log(err);
-                    return res.send("Database error");
+        db.query(
+            checkSql,
+            [
+                student_id,
+                internship_id
+            ],
+            (err, result) => {
+
+                if (err) {
+
+                    return res.status(500).json({
+
+                        message: "Database error"
+
+                    });
+
                 }
 
-                // already applied
-                if(result.length > 0){
-                    return res.send("Already applied");
+                if (result.length > 0) {
+
+                    return res.status(400).json({
+
+                        message:
+                            "Already applied"
+
+                    });
+
                 }
 
-                // insert new application
-                const sql = `INSERT INTO applications (student_id, internship_id, status) VALUES (?, ?, ?)`;
+                // insert application
+                const sql = `
+                    INSERT INTO applications
+                    (student_id, internship_id, status)
+                    VALUES (?, ?, ?)
+                `;
 
-                db.query(sql,[student_id, internship_id, status],(err, result) => {
+                db.query(
+                    sql,
+                    [
+                        student_id,
+                        internship_id,
+                        status
+                    ],
+                    (err, result) => {
 
-                        if(err){
-                            console.log(err);
-                            return res.send("Database error");
+                        if (err) {
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Application failed"
+
+                            });
+
                         }
 
-                        res.send("Application added successfully");
+                        res.status(201).json({
+
+                            message:
+                                "Application added successfully"
+
+                        });
 
                     }
                 );
@@ -383,21 +722,182 @@ app.post(
 
     }
 );
-app.get("/applications", (req, res) => {
 
-    const sql = "SELECT * FROM applications";
+// =======================================
+// MY APPLICATIONS
+// =======================================
 
-    db.query(sql, (err, result) => {
+// =======================================
+// MY APPLICATIONS
+// =======================================
 
-        if(err){
-            return res.send("Database error");
-        }
+app.get(
+    "/my-applications",
+    verifyToken,
+    (req, res) => {
 
-        res.json(result);
+        const student_id = req.user.id;
 
-    });
+        const sql = `
+            SELECT
+                applications.id,
+                internships.title,
+                internships.company,
+                internships.location,
+                applications.status
+
+            FROM applications
+
+            JOIN internships
+            ON applications.internship_id =
+            internships.id
+
+            WHERE applications.student_id = ?
+        `;
+
+        db.query(
+            sql,
+            [student_id],
+            (err, result) => {
+
+                if (err) {
+
+                    return res.status(500).json({
+                        message: "Database error"
+                    });
+
+                }
+
+                res.status(200).json(result);
+
+            }
+        );
+
+    }
+);
+app.listen(3000, () => {
+
+    console.log(
+        "Server running at http://localhost:3000"
+    );
 
 });
-app.listen(3000, () => {
-    console.log("Server running at http://localhost:3000");
+// =======================================
+// GET ALL USERS
+// =======================================
+
+app.get(
+    "/users",
+    verifyToken,
+    adminOnly,
+    (req, res) => {
+
+        const sql = "SELECT * FROM users";
+
+        db.query(sql, (err, result) => {
+
+            if (err) {
+
+                return res.status(500).json({
+
+                    message: "Database error"
+
+                });
+
+            }
+
+            res.status(200).json(result);
+
+        });
+
+    }
+);
+
+// =======================================
+// PROFILE API
+// =======================================
+
+app.get(
+    "/profile",
+    verifyToken,
+    (req, res) => {
+
+        res.status(200).json({
+
+            message:
+                "Protected profile accessed",
+
+            user: req.user
+
+        });
+
+    }
+);
+
+// =======================================
+// ADMIN DASHBOARD
+// =======================================
+
+app.get(
+    "/admin/dashboard",
+    verifyToken,
+    adminOnly,
+    (req, res) => {
+
+        const dashboardData = {};
+
+        db.query(
+            "SELECT COUNT(*) AS totalUsers FROM users",
+            (err, usersResult) => {
+
+                dashboardData.totalUsers =
+                    usersResult[0].totalUsers;
+
+                db.query(
+                    "SELECT COUNT(*) AS totalInternships FROM internships",
+                    (err, internshipsResult) => {
+
+                        dashboardData.totalInternships =
+                            internshipsResult[0]
+                                .totalInternships;
+
+                        db.query(
+                            "SELECT COUNT(*) AS totalApplications FROM applications",
+                            (
+                                err,
+                                applicationsResult
+                            ) => {
+
+                                dashboardData.totalApplications =
+                                    applicationsResult[0]
+                                        .totalApplications;
+
+                                res.status(200).json(
+                                    dashboardData
+                                );
+
+                            }
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+    }
+);
+
+// =======================================
+// SERVER
+// =======================================
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+
+    console.log(
+        `Server running on port ${PORT}`
+    );
+
 });
