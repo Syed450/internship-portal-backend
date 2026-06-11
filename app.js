@@ -10,11 +10,13 @@ require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
+const cors = require("cors");
 const jwt = require("jsonwebtoken");
 
 const app = express();
 
 app.use(express.json());
+app.use(cors());
 
 // =======================================
 // DATABASE CONNECTION
@@ -65,39 +67,42 @@ const verifyToken = (req, res, next) => {
 
     const header = req.headers.authorization;
 
-    // token exists or not
+    console.log("HEADER:", header);
+
     if (!header) {
 
         return res.status(401).json({
-
             message: "Access denied"
-
         });
 
     }
 
-    // extract token
     const token = header.split(" ")[1];
+
+    console.log("TOKEN:", token);
 
     try {
 
-        // verify token
         const verified = jwt.verify(
             token,
             process.env.JWT_SECRET
         );
 
-        // store user data
+        console.log("VERIFIED USER:", verified);
+
         req.user = verified;
 
         next();
 
     } catch (error) {
 
+        console.log(
+            "JWT ERROR:",
+            error.message
+        );
+
         return res.status(401).json({
-
             message: "Invalid token"
-
         });
 
     }
@@ -132,10 +137,10 @@ app.post("/register", async (req, res) => {
 
     try {
 
-        const { name, email, password, role } = req.body;
+        const { name, email, password} = req.body;
 
         // validation
-        if (!name || !email || !password || !role) {
+        if (!name || !email || !password ) {
 
             return res.status(400).json({
 
@@ -181,7 +186,7 @@ app.post("/register", async (req, res) => {
                 // insert user
                 const sql = `
                     INSERT INTO users
-                    (name, email, password, role)
+                    (name, email, password,role)
                     VALUES (?, ?, ?, ?)
                 `;
 
@@ -191,7 +196,7 @@ app.post("/register", async (req, res) => {
                         name,
                         email,
                         hashedPassword,
-                        role
+                        "student"
                     ],
                     (err, result) => {
 
@@ -419,7 +424,6 @@ app.get("/internships/:id", (req, res) => {
 // =======================================
 // ADD INTERNSHIP
 // =======================================
-
 app.post(
     "/internships",
     verifyToken,
@@ -430,15 +434,17 @@ app.post(
             title,
             company,
             location,
-            stipend
+            stipend,
+            apply_link
         } = req.body;
 
-        // validation
+        // VALIDATION
         if (
             !title ||
             !company ||
             !location ||
-            !stipend
+            !stipend ||
+            !apply_link
         ) {
 
             return res.status(400).json({
@@ -450,19 +456,18 @@ app.post(
 
         }
 
-        const sql = `
-            INSERT INTO internships
-            (title, company, location, stipend)
-            VALUES (?, ?, ?, ?)
+        // CHECK DUPLICATE
+        const checkSql = `
+            SELECT * FROM internships
+            WHERE title = ?
+            AND company = ?
         `;
 
         db.query(
-            sql,
+            checkSql,
             [
                 title,
-                company,
-                location,
-                stipend
+                company
             ],
             (err, result) => {
 
@@ -471,18 +476,67 @@ app.post(
                     return res.status(500).json({
 
                         message:
-                            "Database insert error"
+                            "Database error"
 
                     });
 
                 }
 
-                res.status(201).json({
+                if (result.length > 0) {
 
-                    message:
-                        "Internship added successfully"
+                    return res.status(400).json({
 
-                });
+                        message:
+                            "Internship already exists"
+
+                    });
+
+                }
+
+                // INSERT INTERNSHIP
+                const sql = `
+                    INSERT INTO internships
+                    (
+                        title,
+                        company,
+                        location,
+                        stipend,
+                        apply_link
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                `;
+
+                db.query(
+                    sql,
+                    [
+                        title,
+                        company,
+                        location,
+                        stipend,
+                        apply_link
+                    ],
+                    (err, result) => {
+
+                        if (err) {
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Database insert error"
+
+                            });
+
+                        }
+
+                        res.status(201).json({
+
+                            message:
+                                "Internship added successfully"
+
+                        });
+
+                    }
+                );
 
             }
         );
@@ -642,7 +696,7 @@ app.post(
         const internship_id =
             req.params.internshipId;
 
-        const status = "applied";
+        const status = "Applied";
 
         // already applied check
         const checkSql = `
@@ -722,11 +776,6 @@ app.post(
 
     }
 );
-
-// =======================================
-// MY APPLICATIONS
-// =======================================
-
 // =======================================
 // MY APPLICATIONS
 // =======================================
@@ -775,13 +824,6 @@ app.get(
 
     }
 );
-app.listen(3000, () => {
-
-    console.log(
-        "Server running at http://localhost:3000"
-    );
-
-});
 // =======================================
 // GET ALL USERS
 // =======================================
@@ -881,6 +923,58 @@ app.get(
 
                     }
                 );
+
+            }
+        );
+
+    }
+);
+// =======================================
+// UPDATE APPLICATION STATUS
+// =======================================
+
+app.put(
+    "/applications/:id",
+    verifyToken,
+    (req, res) => {
+
+        const applicationId =
+            req.params.id;
+
+        const { status } =
+            req.body;
+
+        const sql = `
+            UPDATE applications
+            SET status = ?
+            WHERE id = ?
+        `;
+
+        db.query(
+            sql,
+            [
+                status,
+                applicationId
+            ],
+            (err, result) => {
+
+                if (err) {
+
+                    return res.status(500).json({
+
+                        message:
+                        "Database Error"
+
+                    });
+
+                }
+
+                res.status(200).json({
+
+                    message:
+                    "Status Updated Successfully"
+
+                });
 
             }
         );

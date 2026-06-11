@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Internship Portal</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="navbar.css">
+</head>
+<body>
+    <div class="navbar">
+
+    <div class="nav-links">
+
+        <a href="index.html">Home</a>
+
+        <a href="login.html">Login</a>
+
+        <a href="register.html">Register</a>
+
+        <a href="application.html">
+            My Applications
+        </a>
+        <a
+            id="admin-link" href="admin.html" 
+            style="display: none;"> Add Internship </a>
+
+    </div>
+
+    <button
+        class="logout-btn"
+        onclick="logout()"
+    >
+        Logout
+    </button>
+
+</div>
+    <h1>Internship Portal / Job Portal</h1>
+    <div id="internships"></div>
+    <script src="script.js"></script>
+</body>
+
+</html>
