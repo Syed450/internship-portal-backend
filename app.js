@@ -35,7 +35,7 @@ db.connect((err) => {
 
     if (err) {
 
-        console.log("Database connection failed");
+        console.error("Database connection failed:", err);
 
     } else {
 
