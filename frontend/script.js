@@ -1,147 +1,103 @@
+const API_URL = "https://internship-portal-backend-production.up.railway.app";
+
 // =======================================
 // AUTH CHECK
 // =======================================
 
-const token =
-    localStorage.getItem(
-        "token"
-    );
+const token = localStorage.getItem("token");
 
 if (!token) {
-
-    window.location.href =
-        "login.html";
-
+    window.location.href = "login.html";
 }
 
 // =======================================
 // CHECK USER ROLE
 // =======================================
 
-const role =
-    localStorage.getItem(
-        "role"
-    );
+const role = localStorage.getItem("role");
 
-const adminLink =
-    document.getElementById(
-        "admin-link"
-    );
+const adminLink = document.getElementById("admin-link");
 
-if (
-    role === "admin" &&
-    adminLink
-) {
-
-    adminLink.style.display =
-        "inline-block";
-
+if (role === "admin" && adminLink) {
+    adminLink.style.display = "inline-block";
 }
 
 // =======================================
 // FETCH ALL INTERNSHIPS
 // =======================================
 
-fetch(
-    "http://localhost:3000/internships"
-)
+fetch(`${API_URL}/internships`)
+    .then(response => response.json())
+    .then(data => {
 
-.then(
-    response =>
-        response.json()
-)
+        const internshipsDiv =
+            document.getElementById("internships");
 
-.then(data => {
+        internshipsDiv.innerHTML = "";
 
-    const internshipsDiv =
-        document.getElementById(
-            "internships"
-        );
+        data.forEach(internship => {
 
-    internshipsDiv.innerHTML = "";
+            internshipsDiv.innerHTML += `
+                <div class="card">
 
-    data.forEach(internship => {
+                    <h2>${internship.title}</h2>
 
-        internshipsDiv.innerHTML += `
+                    <p>
+                        <strong>Company:</strong>
+                        ${internship.company}
+                    </p>
 
-            <div class="card">
+                    <p>
+                        <strong>Location:</strong>
+                        ${internship.location}
+                    </p>
 
-                <h2>
-                    ${internship.title}
-                </h2>
+                    <p>
+                        <strong>Stipend:</strong>
+                        ${internship.stipend}
+                    </p>
 
-                <p>
-                    <strong>Company:</strong>
-                    ${internship.company}
-                </p>
+                    <a
+                        href="${internship.apply_link}"
+                        target="_blank"
+                        class="apply-link-btn"
+                    >
+                        Apply On Company Website
+                    </a>
 
-                <p>
-                    <strong>Location:</strong>
-                    ${internship.location}
-                </p>
-
-                <p>
-                    <strong>Stipend:</strong>
-                    ₹${internship.stipend}
-                </p>
-
-                <a
-                    href="${internship.apply_link}"
-                    target="_blank"
-                    class="apply-link-btn"
-                >
-                    Apply On Company Website
-                </a>
-
-                <br><br>
-
-                <button
-                    onclick="
-                        applyInternship(
-                            ${internship.id}
-                        )
-                    "
-                >
-                    Mark As Applied
-                </button>
-
-                ${
-                    role === "admin"
-                    ?
-                    `
                     <br><br>
 
                     <button
-                        class="delete-btn"
-                        onclick="
-                            deleteInternship(
-                                ${internship.id}
-                            )
-                        "
+                        onclick="applyInternship(${internship.id})"
                     >
-                        Delete Internship
+                        Mark As Applied
                     </button>
-                    `
-                    :
-                    ""
-                }
 
-            </div>
+                    ${
+                        role === "admin"
+                        ?
+                        `
+                        <br><br>
 
-        `;
+                        <button
+                            class="delete-btn"
+                            onclick="deleteInternship(${internship.id})"
+                        >
+                            Delete Internship
+                        </button>
+                        `
+                        :
+                        ""
+                    }
 
+                </div>
+            `;
+        });
+
+    })
+    .catch(error => {
+        console.log("Error:", error);
     });
-
-})
-
-.catch(error => {
-
-    console.log(
-        "Error:",
-        error
-    );
-
-});
 
 // =======================================
 // APPLY INTERNSHIP
@@ -150,16 +106,11 @@ fetch(
 async function applyInternship(id) {
 
     const token =
-        localStorage.getItem(
-            "token"
-        );
+        localStorage.getItem("token");
 
     if (!token) {
 
-        alert(
-            "Please Login First"
-        );
-
+        alert("Please Login First");
         return;
 
     }
@@ -168,38 +119,26 @@ async function applyInternship(id) {
 
         const response =
             await fetch(
-
-                `http://localhost:3000/apply/${id}`,
-
+                `${API_URL}/apply/${id}`,
                 {
-
                     method: "POST",
-
                     headers: {
-
                         Authorization:
                             `Bearer ${token}`
-
                     }
-
                 }
-
             );
 
         const data =
             await response.json();
 
-        alert(
-            data.message
-        );
+        alert(data.message);
 
     }
 
     catch (error) {
 
-        console.log(
-            error
-        );
+        console.log(error);
 
     }
 
@@ -226,30 +165,20 @@ async function deleteInternship(id) {
 
         const response =
             await fetch(
-
-                `http://localhost:3000/internships/${id}`,
-
+                `${API_URL}/internships/${id}`,
                 {
-
                     method: "DELETE",
-
                     headers: {
-
                         Authorization:
                             `Bearer ${token}`
-
                     }
-
                 }
-
             );
 
         const data =
             await response.json();
 
-        alert(
-            data.message
-        );
+        alert(data.message);
 
         location.reload();
 
@@ -272,13 +201,9 @@ async function deleteInternship(id) {
 
 function logout() {
 
-    localStorage.removeItem(
-        "token"
-    );
+    localStorage.removeItem("token");
 
-    localStorage.removeItem(
-        "role"
-    );
+    localStorage.removeItem("role");
 
     alert(
         "Logged Out Successfully"

@@ -1,7 +1,7 @@
 // =======================================
 // APPLICATION PAGE
 // =======================================
-
+const API_URL = "https://internship-portal-backend-production.up.railway.app";
 const container =
     document.getElementById(
         "application-container"
@@ -45,7 +45,7 @@ async function fetchApplications() {
         const response =
             await fetch(
 
-                "http://localhost:3000/my-applications",
+                `${API_URL}/my-applications`,
 
                 {
 
@@ -261,7 +261,7 @@ async function updateStatus(
         const response =
             await fetch(
 
-                `http://localhost:3000/applications/${id}`,
+                `${API_URL}/applications/${id}`,
 
                 {
 

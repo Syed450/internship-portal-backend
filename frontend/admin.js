@@ -1,3 +1,5 @@
+const API_URL = "https://internship-portal-backend-production.up.railway.app";
+
 async function addInternship() {
 
     const title =
@@ -30,7 +32,7 @@ async function addInternship() {
 
         const response = await fetch(
 
-            "http://localhost:3000/internships",
+            `${API_URL}/internships`,
 
             {
 

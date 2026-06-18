@@ -1,6 +1,4 @@
-// =======================================
-// LOGIN
-// =======================================
+const API_URL = "https://internship-portal-backend-production.up.railway.app";
 
 async function login() {
 
@@ -14,44 +12,34 @@ async function login() {
 
         const response = await fetch(
 
-            "http://localhost:3000/login",
+            `${API_URL}/login`,
 
             {
 
                 method: "POST",
 
                 headers: {
-
-                    "Content-Type":
-                        "application/json"
-
+                    "Content-Type": "application/json"
                 },
 
                 body: JSON.stringify({
-
                     email,
                     password
-
                 })
 
             }
 
         );
 
-        const data =
-            await response.json();
-
-        console.log(data);
+        const data = await response.json();
 
         if (data.token) {
 
-            // Store JWT Token
             localStorage.setItem(
                 "token",
                 data.token
             );
 
-            // Store User Role
             localStorage.setItem(
                 "role",
                 data.user.role
@@ -62,7 +50,6 @@ async function login() {
             ).innerText =
                 "Login Successful";
 
-            // Redirect User
             window.location.href =
                 "index.html";
 
@@ -85,29 +72,5 @@ async function login() {
             "Server Error";
 
     }
-
-}
-
-
-// =======================================
-// LOGOUT
-// =======================================
-
-function logout() {
-
-    localStorage.removeItem(
-        "token"
-    );
-
-    localStorage.removeItem(
-        "role"
-    );
-
-    alert(
-        "Logged out successfully"
-    );
-
-    window.location.href =
-        "login.html";
 
 }
